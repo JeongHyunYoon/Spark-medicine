@@ -1,0 +1,25 @@
+
+//그래프 (파이썬)
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+label = {1: "0~4", 2: "5~9", 3: "10~14", 4: "15~19", 5: "20~25",
+	6: "25~29", 7: "30~34", 8: "35~39", 9: "40~44", 10: "45~49",
+	11: "50~54", 12: "55~59", 13: "60~64", 14: "65~69", 15: "70~74",
+	16: "75~79", 17: "80~84", 18: "85+"}
+
+base = "/home/spark/DataFile/output/res1"
+name_format = "/NHIS_OPEN_T60_"
+content = "/part-00000"
+
+for key in label:
+	input = base + name_format + "[" + str(key) + "]" + content
+	values = np.loadtxt(input, delimiter = "," , dtype = float)
+	year = values[:,0].astype(int).astype(str)
+	average = values[:,-1]
+	plt.xlabel('year')
+	plt.ylabel('average')
+	if key <= 10:
+		plt.plot(year, average, label = label[key], marker = 'o')
+	else:
