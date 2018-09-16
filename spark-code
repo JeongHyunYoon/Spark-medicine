@@ -1,0 +1,50 @@
+
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.types.{IntegerType, DoubleType}
+
+val base = "/home/spark/DataFile/"
+val name_format = "NHIS_OPEN_T60"
+val input_base = base + name_format
+val output_base = base + "output/"
+val result0 = "average"
+
+val years = Array(2012, 2013, 2014, 2015)
+val parts = Array("part1", "part2")
+
+var sparkSession = SparkSession.builder().getOrCreate()
+
+// 평균 구하기
+
+for(year <- years) {
+   var rdd = sc.emptyRDD[(String, Int)]
+
+   for(part <- parts){
+	var df = sparkSession.read.csv(input_base + "_" + year + "_" + part + ".CSV").withColumn("_c13", col("_c13").cast(IntegerType))
+	var header = df.first()
+	df = df.filter(row => row != header)
+	var data = df.select("_c5", "_c13")
+	rdd = rdd.union(data.as[(String, Int)].rdd)
+   }
+   val df_avg = spark.createDataFrame(rdd).groupBy("_1").agg(avg("_2"))
+   val avg_rdd = df_avg.as[(String, Double)].rdd.map{case(a,b) => a.toString + "," + b.toString}
+   avg_rdd.coalesce(1).saveAsTextFile(output_base + "res0/ + name_format + "_" + year + "_" + result0)
+}
+
+
+// 연령별 정리
+
+var rdd = sc.emptyRDD[(String, (Int,Int))]
+
+for (year <- years) {
+   var inputFile = sc.textFile(output_base + "res0/" + name_format + "_" + year + "_" + result0 + "/part-00000")
+   rdd = rdd.union(inputFile.map{line => 
+		var mapping = line.split(",")
+		(mapping(0), (year, mapping(1).toDouble))
+		})
+}
+
+var groups = rdd.groupByKey()
+
+for( group <- groups ) {
+   sc.parallelize(group._2.toArray.map{case(x,y) => x.toString + "," + y.toString}).saveAsTextFile(output_base+ "res1/" + name_format + "_" + "[" + group._1 + "]")
+}
